@@ -41,10 +41,16 @@ python tools/run_net.py \
   TRAIN.ENABLE False
 ```
 
+### UCF-CRIME Training (Two-Phase)
+```bash
+cd projects/x3d
+python train.py --model x3d_m --batch-size 8 --phase1-epochs 2 --phase2-epochs 3
+```
+
 ### UCF-CRIME Evaluation
 ```bash
 cd projects/x3d
-python evaluate_ucf_crime.py
+python evaluate_ucf_crime.py --checkpoint ./x3d_ucfcrime_5ep_sgd.pth --model x3d_m
 ```
 
 ### Debugging with Fewer Workers
@@ -78,9 +84,13 @@ SlowFast/
 
 ## Key Files in This Project
 
-- **`model.py`**: Custom X3D model factory adapted from PyTorchVideo. Use `create_x3d()` to instantiate models with configurable `model_num_class`, `depth_factor`, `input_clip_length`, etc.
-- **`evaluate_ucf_crime.py`**: Standalone evaluation script. Uses `UCFCrimeDataset` class that reads timestamp CSVs from annotation directory.
-- **`ptv_x3d_ft_v2.ipynb`**: Primary fine-tuning notebook with training loop and checkpoint saving.
+- **`config.py`**: Configuration dataclasses for model, data, and training settings. Contains `MODEL_TRANSFORM_PARAMS` for different X3D variants and `UCF_CRIME_CLASSES`.
+- **`dataset.py`**: `UCFCrimeDataset` class for loading videos with timestamp annotations from CSV files.
+- **`model.py`**: Custom X3D model factory adapted from PyTorchVideo. Use `create_x3d()` to instantiate models.
+- **`train.py`**: Training script with two-phase strategy (head-only then full fine-tuning).
+- **`evaluate_ucf_crime.py`**: Evaluation script with accuracy/AUC metrics and confusion matrix visualization.
+- **`utils.py`**: Utility functions for transforms, model loading, checkpointing, and plotting.
+- **`ptv_x3d_ft_v2.ipynb`**: Reference notebook (refactored code is in the Python modules above).
 
 ## X3D Model Variants
 
