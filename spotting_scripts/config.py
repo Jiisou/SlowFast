@@ -45,7 +45,7 @@ class SpottingDataConfig:
 
     # Video parameters
     fps: int = 30
-    unit_duration: float = 1.0  # 1 second per unit
+    unit_duration: float = 2.0  # 2 second per unit
 
     # Sliding window strides (in frames)
     train_stride: int = 8   # 50% overlap (0.5s step)

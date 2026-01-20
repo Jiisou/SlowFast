@@ -20,6 +20,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 try:
     import decord
@@ -147,7 +148,7 @@ class UCFCrimeSpottingDataset(Dataset):
         transform: Optional[Callable] = None,
         mode: str = 'train',
         fps: int = 30,
-        unit_duration: float = 1.0,
+        unit_duration: float = 2.0, # 2 초
         verbose: bool = True,
     ):
         self.video_dir = video_dir
@@ -160,7 +161,7 @@ class UCFCrimeSpottingDataset(Dataset):
 
         # Stride in frames based on mode
         self.stride = 8 if mode == 'train' else 16
-        self.window_size = int(fps * unit_duration)  # 30 frames for 1 second
+        self.window_size = int(fps * unit_duration)  # 60 frames for 2 second
 
         # Validate video loading library
         if not DECORD_AVAILABLE and not AV_AVAILABLE:
@@ -239,8 +240,9 @@ class UCFCrimeSpottingDataset(Dataset):
         if self.verbose:
             print(f"Found {len(video_files)} video files")
 
-        # Process each video
-        for video_path in video_files:
+        # Process each video with progress bar
+        video_iter = tqdm(video_files, desc="Processing videos") if self.verbose else video_files
+        for video_path in video_iter:
             self._process_video(video_path)
 
     def _process_video(self, video_path: str):
@@ -253,6 +255,10 @@ class UCFCrimeSpottingDataset(Dataset):
         for key in self.annotations:
             if key in video_path or key == video_name:
                 events.extend(self.annotations[key])
+
+        # Skip videos without annotations
+        if not events:
+            return
 
         # Get video info
         try:
@@ -295,21 +301,14 @@ class UCFCrimeSpottingDataset(Dataset):
             start_time = start_frame / video_fps
             end_time = end_frame / video_fps
 
-            # Determine label based on overlap with events
-            if is_normal_class:
-                label = 0
-            elif not events:
-                # No annotations for this abnormal video - skip or use default
-                # For safety, we'll label as abnormal if in abnormal class
-                label = 1
-            else:
-                # Check overlap with any event
-                label = 0
-                for event_start, event_end in events:
-                    # Window overlaps with event if they intersect
-                    if start_time < event_end and end_time > event_start:
-                        label = 1
-                        break
+            # Determine label based on overlap with annotated events
+            # Label = 1 if window overlaps with any anomaly event, else 0
+            label = 0
+            for event_start, event_end in events:
+                # Window overlaps with event if they intersect
+                if start_time < event_end and end_time > event_start:
+                    label = 1
+                    break
 
             self.samples.append({
                 'video_path': video_path,
@@ -478,7 +477,7 @@ class UCFCrimeSpottingInferenceDataset(Dataset):
         video_path: str,
         transform: Optional[Callable] = None,
         fps: int = 30,
-        unit_duration: float = 1.0,
+        unit_duration: float = 2.0,
     ):
         self.video_path = video_path
         self.transform = transform
