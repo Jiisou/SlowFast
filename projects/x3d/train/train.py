@@ -208,6 +208,7 @@ def train(
     total_epochs = train_cfg.phase1_epochs + train_cfg.phase2_epochs
 
     # Save state dict
+    os.makedirs(train_cfg.checkpoint_dir, exist_ok=True) # exist_ok=True means if the directory already exists, do nothing (skip)
     state_dict_path = os.path.join(
         train_cfg.checkpoint_dir,
         f"{train_cfg.save_name}_{total_epochs}ep_{train_cfg.optimizer}_{timestamp}.pth"

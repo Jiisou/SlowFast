@@ -67,7 +67,13 @@ def evaluate_model(
     accuracy = accuracy_score(all_labels, all_preds)
 
     try:
-        auc = roc_auc_score(all_labels, all_probs, multi_class='ovr')
+        num_classes = all_probs.shape[1]
+        if num_classes == 2:
+            # Binary classification: use probability of positive class (index 1)
+            auc = roc_auc_score(all_labels, all_probs[:, 1])
+        else:
+            # Multi-class: use one-vs-rest
+            auc = roc_auc_score(all_labels, all_probs, multi_class='ovr')
     except ValueError as e:
         print(f"AUC calculation error (possibly missing classes in test set): {e}")
         auc = 0.0
@@ -173,7 +179,7 @@ def main():
                         help="Number of data loading workers")
 
     # Output
-    parser.add_argument("--output-dir", type=str, default=".",
+    parser.add_argument("--output-dir", type=str, default="./results",
                         help="Directory to save results")
     parser.add_argument("--save-confusion-matrix", action="store_true", default=True,
                         help="Save confusion matrix plot")
