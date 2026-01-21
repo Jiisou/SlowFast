@@ -390,7 +390,29 @@ def train(
                     train_cfg.checkpoint_dir,
                     f"{train_cfg.save_name}_best.pth",
                 )
-                save_checkpoint(model, optimizer_p1, epoch, val_loss, val_auc, save_path)
+                save_checkpoint(
+                    model,
+                    optimizer_p1,
+                    epoch,
+                    val_loss,
+                    val_auc,
+                    save_path
+                )
+
+        # Regular checkpoint
+        if (epoch + 1) % train_cfg.save_interval == 0:
+            save_path = os.path.join(
+                train_cfg.checkpoint_dir,
+                f"{train_cfg.save_name}_p1_ep{epoch + 1}.pth",
+            )
+            save_checkpoint(
+                model,
+                optimizer_p1,
+                epoch,
+                val_loss,
+                val_auc,
+                save_path
+            )
 
     # ========================================
     # Phase 2: Full fine-tuning
@@ -437,6 +459,21 @@ def train(
             )
             save_checkpoint(model, optimizer_p2, epoch, val_loss, val_auc, save_path)
             print(f"New best AUC: {best_auc:.4f}")
+
+        # Regular Checkpoint
+        if (epoch + 1) % train_cfg.save_interval == 0:
+            save_path = os.path.join(
+                train_cfg.checkpoint_dir,
+                f"{train_cfg.save_name}_p2_ep{epoch + 1}.pth",
+            )
+            save_checkpoint(
+                model,
+                optimizer_p2,
+                epoch=epoch + 1,
+                val_loss=val_loss,
+                val_auc=val_auc,
+                path=save_path,
+            )
 
         # Early stopping
         if early_stopping(val_auc):
