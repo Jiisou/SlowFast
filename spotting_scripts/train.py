@@ -292,10 +292,12 @@ def train(
         video_dir=data_cfg.train_root,
         annotation_csv=data_cfg.train_annotation,
         transform=train_transform,
-        mode='train',
-        fps=data_cfg.fps,
+        overlap_ratio=data_cfg.train_overlap_ratio,
+        fallback_fps=data_cfg.fallback_fps,
         unit_duration=data_cfg.unit_duration,
+        max_videos_per_class=data_cfg.max_videos_per_class,
         verbose=True,
+        seed=train_cfg.seed,
     )
 
     # Split into train/val
@@ -504,6 +506,8 @@ def parse_args():
                         help="Random seed")
     parser.add_argument("--patience", type=int, default=5,
                         help="Early stopping patience")
+    parser.add_argument("--max-videos-per-class", type=int, default=None,
+                        help="Max videos per class for balanced training (default: None = no limit)")
 
     return parser.parse_args()
 
@@ -518,6 +522,7 @@ def main():
     data_cfg = SpottingDataConfig(
         train_root=args.train_root,
         train_annotation=args.train_annotation,
+        max_videos_per_class=args.max_videos_per_class,
     )
 
     train_cfg = SpottingTrainConfig(
@@ -548,6 +553,8 @@ def main():
     print(f"Phase 1: {train_cfg.phase1_epochs} epochs @ lr={train_cfg.phase1_lr}")
     print(f"Phase 2: {train_cfg.phase2_epochs} epochs @ "
           f"backbone_lr={train_cfg.phase2_backbone_lr}, head_lr={train_cfg.phase2_head_lr}")
+    if data_cfg.max_videos_per_class is not None:
+        print(f"Video balancing: max {data_cfg.max_videos_per_class} videos per class")
     print("=" * 60)
 
     # Train

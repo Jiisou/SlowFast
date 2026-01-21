@@ -418,8 +418,8 @@ def evaluate(
         video_dir=data_cfg.test_root,
         annotation_csv=data_cfg.test_annotation,
         transform=transform,
-        mode='inference',  # Non-overlapping windows
-        fps=data_cfg.fps,
+        overlap_ratio=data_cfg.infer_overlap_ratio,  # No overlap for inference
+        fallback_fps=data_cfg.fallback_fps,
         unit_duration=data_cfg.unit_duration,
         verbose=True,
     )

@@ -3,13 +3,13 @@ Configuration for Anomaly Action Spotting Model using X3D-M backbone.
 
 Key differences from original X3D project:
 - Binary classification (Normal vs Abnormal)
-- Sliding window on untrimmed videos (1-second units)
-- Fixed 16-frame sampling from 30-frame windows
-- Different strides for training (8) vs inference (16)
+- Sliding window on untrimmed videos with variable FPS support
+- Fixed 16-frame sampling uniformly from each window (regardless of window size)
+- Controllable overlap ratio for training vs inference
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -44,15 +44,18 @@ class SpottingDataConfig:
     std: Tuple[float, ...] = (0.225, 0.225, 0.225)
 
     # Video parameters
-    fps: int = 30
-    unit_duration: float = 2.0  # 2 second per unit
+    fallback_fps: int = 30  # Fallback if video FPS detection fails
+    unit_duration: float = 2.0  # seconds per unit
 
-    # Sliding window strides (in frames)
-    train_stride: int = 8   # 50% overlap (0.5s step)
-    infer_stride: int = 16  # No overlap (1.0s step), same as CLIP_FRAMES
+    # Sliding window overlap ratios (0.0 = no overlap, 0.5 = 50% overlap, etc.)
+    train_overlap_ratio: float = 0.5  # 50% overlap for training
+    infer_overlap_ratio: float = 0.0  # No overlap for inference
 
     # Validation split
     val_split: float = 0.1
+
+    # Video balancing: limit videos per class (None = no limit)
+    max_videos_per_class: Optional[int] = None
 
 
 @dataclass
@@ -94,7 +97,7 @@ class SpottingTrainConfig:
 
 
 # Constants for frame sampling
-CLIP_FRAMES = 16  # Total frames to extract per 1-second unit
+FRAMES_PER_UNIT = 16  # Total frames to extract per 1-second unit
 UNIT_FRAMES = 30  # Frames in 1 second at 30 fps
 
 # Frame indices to sample from 30-frame window
@@ -127,25 +130,31 @@ def get_spotting_config(
         num_classes=num_classes,
     )
 
-
-def get_frame_indices(window_size: int = 30) -> List[int]:
+#  Calculate which 16 indices to extract (-> (dataset.py)._extract_frames)
+def get_frame_indices(window_size: int, num_frames: int = FRAMES_PER_UNIT) -> List[int]:
     """
-    Get frame indices to sample from a window.
+    Get frame indices to uniformly sample from a window.
 
-    For a 30-frame window (1 second at 30fps):
-    - Sample even indices: 0, 2, 4, ..., 28 (15 frames)
-    - Plus the last frame: 29 (1 frame)
-    - Total: 16 frames
+    Supports variable window sizes (for variable FPS videos). Always returns
+    exactly `num_frames` indices uniformly distributed across the window.
+
+    Examples:
+    - 30-frame window (1s @ 30fps) → indices spaced ~2 frames apart
+    - 48-frame window (2s @ 24fps) → indices spaced ~3 frames apart
+    - 60-frame window (2s @ 30fps) → indices spaced ~4 frames apart
 
     Args:
-        window_size: Size of the window in frames (default: 30).
+        window_size: Size of the window in frames.
+        num_frames: Number of frames to sample (default: 16).
 
     Returns:
-        List of frame indices to sample.
+        List of frame indices to sample (length = num_frames).
     """
-    if window_size != 30:
-        # For different window sizes, sample uniformly
-        indices = [int(i * (window_size - 1) / 15) for i in range(16)]
+    if window_size < num_frames:
+        # If window is smaller than requested frames, sample with repetition
+        indices = [int(i * (window_size - 1) / (num_frames - 1)) for i in range(num_frames)]
         return indices
 
-    return SAMPLE_INDICES.copy()
+    # Uniform sampling across the window
+    indices = [int(i * (window_size - 1) / (num_frames - 1)) for i in range(num_frames)]
+    return indices

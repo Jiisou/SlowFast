@@ -25,7 +25,7 @@ from config import (
     SpottingModelConfig,
     SpottingDataConfig,
     get_spotting_config,
-    CLIP_FRAMES,
+    FRAMES_PER_UNIT,
 )
 from dataset import UCFCrimeSpottingInferenceDataset
 from model import create_spotting_model
@@ -39,7 +39,9 @@ def process_video(
     transform,
     device: torch.device,
     batch_size: int = 16,
-    fps: int = 30,
+    fallback_fps: int = 30,
+    overlap_ratio: float = 0.0,
+    unit_duration: float = 2.0,
 ) -> List[Dict]:
     """
     Process a single video and return anomaly scores per segment.
@@ -50,7 +52,9 @@ def process_video(
         transform: Video transform pipeline.
         device: Device to run inference on.
         batch_size: Batch size for processing.
-        fps: Video frame rate assumption.
+        fallback_fps: Fallback frame rate if video FPS detection fails.
+        overlap_ratio: Overlap ratio between windows (0.0 = no overlap).
+        unit_duration: Duration of each unit in seconds.
 
     Returns:
         List of dictionaries with segment information and anomaly scores.
@@ -59,7 +63,9 @@ def process_video(
     dataset = UCFCrimeSpottingInferenceDataset(
         video_path=video_path,
         transform=transform,
-        fps=fps,
+        overlap_ratio=overlap_ratio,
+        fallback_fps=fallback_fps,
+        unit_duration=unit_duration,
     )
 
     if len(dataset) == 0:
@@ -269,7 +275,9 @@ def batch_process(
     device: torch.device,
     output_dir: str,
     batch_size: int = 16,
-    fps: int = 30,
+    fallback_fps: int = 30,
+    overlap_ratio: float = 0.0,
+    unit_duration: float = 2.0,
     threshold: float = 0.5,
     visualize: bool = True,
 ):
@@ -283,7 +291,9 @@ def batch_process(
         device: Device to run inference on.
         output_dir: Directory to save outputs.
         batch_size: Batch size for processing.
-        fps: Video frame rate assumption.
+        fallback_fps: Fallback frame rate if video FPS detection fails.
+        overlap_ratio: Overlap ratio between windows (0.0 = no overlap).
+        unit_duration: Duration of each unit in seconds.
         threshold: Anomaly threshold.
         visualize: Whether to create visualizations.
     """
@@ -297,7 +307,10 @@ def batch_process(
 
         # Process video
         results = process_video(
-            model, video_path, transform, device, batch_size, fps
+            model, video_path, transform, device, batch_size,
+            fallback_fps=fallback_fps,
+            overlap_ratio=overlap_ratio,
+            unit_duration=unit_duration,
         )
 
         if not results:
@@ -334,7 +347,9 @@ def infer_single(
     output_dir: str = "./inference_output",
     threshold: float = 0.5,
     visualize: bool = True,
-    fps: int = 30,
+    fallback_fps: int = 30,
+    overlap_ratio: float = 0.0,
+    unit_duration: float = 2.0,
 ):
     """
     Run inference on a single video.
@@ -345,7 +360,9 @@ def infer_single(
         output_dir: Directory to save outputs.
         threshold: Anomaly threshold.
         visualize: Whether to create visualization.
-        fps: Video frame rate assumption.
+        fallback_fps: Fallback frame rate if video FPS detection fails.
+        overlap_ratio: Overlap ratio between windows (0.0 = no overlap).
+        unit_duration: Duration of each unit in seconds.
     """
     device = get_device()
 
@@ -364,7 +381,12 @@ def infer_single(
 
     # Process video
     print(f"\nProcessing: {video_path}")
-    results = process_video(model, video_path, transform, device, fps=fps)
+    results = process_video(
+        model, video_path, transform, device,
+        fallback_fps=fallback_fps,
+        overlap_ratio=overlap_ratio,
+        unit_duration=unit_duration,
+    )
 
     if not results:
         print("No results generated")
@@ -405,8 +427,12 @@ def parse_args():
                         help="Directory to save outputs")
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="Anomaly threshold")
-    parser.add_argument("--fps", type=int, default=30,
-                        help="Video frame rate assumption")
+    parser.add_argument("--fallback-fps", type=int, default=30,
+                        help="Fallback frame rate if video FPS detection fails")
+    parser.add_argument("--overlap-ratio", type=float, default=0.0,
+                        help="Overlap ratio between windows (0.0 = no overlap)")
+    parser.add_argument("--unit-duration", type=float, default=2.0,
+                        help="Duration of each unit in seconds")
     parser.add_argument("--batch-size", type=int, default=16,
                         help="Batch size for processing")
     parser.add_argument("--no-visualize", action="store_true",
@@ -427,7 +453,9 @@ def main():
             output_dir=args.output_dir,
             threshold=args.threshold,
             visualize=not args.no_visualize,
-            fps=args.fps,
+            fallback_fps=args.fallback_fps,
+            overlap_ratio=args.overlap_ratio,
+            unit_duration=args.unit_duration,
         )
 
     elif args.video_dir:
@@ -467,7 +495,9 @@ def main():
             device=device,
             output_dir=args.output_dir,
             batch_size=args.batch_size,
-            fps=args.fps,
+            fallback_fps=args.fallback_fps,
+            overlap_ratio=args.overlap_ratio,
+            unit_duration=args.unit_duration,
             threshold=args.threshold,
             visualize=not args.no_visualize,
         )
