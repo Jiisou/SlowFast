@@ -254,7 +254,7 @@ class UCFCrimeSpottingDataset(Dataset):
         # Apply video balancing if max_videos_per_class is set
         video_files = []
         if self.max_videos_per_class is not None:
-            rng = random.Random(self.seed)
+            rng = random.Random(self.seed) # for reproducibility, independent random sampler
             if self.verbose:
                 print(f"\nBalancing videos: max {self.max_videos_per_class} per class")
             for class_name, class_videos in sorted(videos_by_class.items()):

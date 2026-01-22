@@ -54,7 +54,7 @@ class SpottingDataConfig:
     # Validation split
     val_split: float = 0.1
 
-    # Video balancing: limit videos per class (None = no limit)
+    # Video balancing: limit videos per class (None = no limit, use every video)
     max_videos_per_class: Optional[int] = None
 
 

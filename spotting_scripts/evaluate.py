@@ -285,27 +285,36 @@ def plot_confusion_matrix(
     save_path: str = "confusion_matrix.png",
 ):
     """Plot and save confusion matrix."""
-    plt.figure(figsize=(8, 6))
-    plt.imshow(cm, interpolation='nearest', cmap='Blues')
-    plt.colorbar()
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm, interpolation='nearest', cmap='Blues')
+    plt.colorbar(im)
 
     classes = SPOTTING_CLASSES
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, fontsize=12)
-    plt.yticks(tick_marks, classes, fontsize=12)
+    ax.set_xticks(tick_marks)
+    ax.set_xticklabels(classes, fontsize=12)
+    ax.set_yticks(tick_marks)
+    ax.set_yticklabels(classes, fontsize=12)
 
     # Add text annotations
     thresh = cm.max() / 2.
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            plt.text(j, i, format(cm[i, j], 'd'),
-                     ha="center", va="center",
-                     color="white" if cm[i, j] > thresh else "black",
-                     fontsize=14)
+            ax.text(j, i, format(cm[i, j], 'd'),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black",
+                    fontsize=14)
 
-    plt.ylabel('True Label', fontsize=12)
-    plt.xlabel('Predicted Label', fontsize=12)
-    plt.title('Confusion Matrix - Anomaly Action Spotting', fontsize=14)
+    # Emphasize diagonal cells with border lines
+    from matplotlib.patches import Rectangle
+    for i in range(min(cm.shape[0], cm.shape[1])):
+        rect = Rectangle((i - 0.5, i - 0.5), 1, 1,
+                          fill=False, edgecolor='red', linewidth=3)
+        ax.add_patch(rect)
+
+    ax.set_ylabel('True Label', fontsize=12)
+    ax.set_xlabel('Predicted Label', fontsize=12)
+    ax.set_title('Confusion Matrix - Anomaly Action Spotting', fontsize=14)
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
     plt.close()
@@ -421,6 +430,7 @@ def evaluate(
         overlap_ratio=data_cfg.infer_overlap_ratio,  # No overlap for inference
         fallback_fps=data_cfg.fallback_fps,
         unit_duration=data_cfg.unit_duration,
+        max_videos_per_class=data_cfg.max_videos_per_class,
         verbose=True,
     )
 
@@ -503,6 +513,8 @@ def parse_args():
                         help="Directory to save outputs")
     parser.add_argument("--plot-videos", type=int, default=5,
                         help="Number of videos to plot timelines for")
+    parser.add_argument("--max-videos-per-class", type=int, default=None,
+                        help="Max videos per class for balanced evaluation (default: None = no limit)")
 
     return parser.parse_args()
 
@@ -514,6 +526,7 @@ def main():
     data_cfg = SpottingDataConfig(
         test_root=args.test_root,
         test_annotation=args.test_annotation,
+        max_videos_per_class=args.max_videos_per_class,
     )
 
     evaluate(

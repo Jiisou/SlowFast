@@ -198,7 +198,8 @@ def create_optimizer(
     else:
         # Phase 2: Differential learning rates
         params = [
-            {'params': model.backbone.blocks[:5].parameters(),
+            # {'params': model.backbone.blocks[:5].parameters(),
+            {'params': model.backbone.blocks[4].parameters(),
              'lr': train_cfg.phase2_backbone_lr},
             {'params': model.backbone.blocks[5].parameters(),
              'lr': train_cfg.phase2_head_lr},
