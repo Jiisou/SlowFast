@@ -376,9 +376,9 @@ def print_metrics_report(metrics: Dict):
     print(f"\n[Segment-Level Metrics]")
     print(f"  Accuracy:    {metrics['accuracy']:.4f}")
     print(f"  AUC-ROC:     {metrics['auc_roc']:.4f}")
-    print(f"  Precision:   {metrics['precision']:.4f}")
-    print(f"  Recall:      {metrics['recall']:.4f}")
-    print(f"  F1 Score:    {metrics['f1']:.4f}")
+    print(f"  Precision:   {metrics['precision_weighted']:.4f}")
+    print(f"  Recall:      {metrics['recall_weighted']:.4f}")
+    print(f"  F1 Score:    {metrics['f1_weighted']:.4f}")
 
     print(f"\n[Optimal Threshold: {metrics['optimal_threshold']:.4f}]")
     print(f"  Precision:   {metrics['opt_precision']:.4f}")
