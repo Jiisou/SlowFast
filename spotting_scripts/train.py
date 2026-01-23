@@ -198,8 +198,7 @@ def create_optimizer(
     else:
         # Phase 2: Differential learning rates
         params = [
-            # {'params': model.backbone.blocks[:5].parameters(),
-            {'params': model.backbone.blocks[4].parameters(),
+            {'params': model.backbone.blocks[:5].parameters(),
              'lr': train_cfg.phase2_backbone_lr},
             {'params': model.backbone.blocks[5].parameters(),
              'lr': train_cfg.phase2_head_lr},
@@ -269,6 +268,7 @@ def train(
     model_cfg: SpottingModelConfig,
     data_cfg: SpottingDataConfig,
     train_cfg: SpottingTrainConfig,
+    resume_ckpt: str = None,
 ):
     """
     Main training function with two-phase strategy.
@@ -277,6 +277,7 @@ def train(
         model_cfg: Model configuration.
         data_cfg: Data configuration.
         train_cfg: Training configuration.
+        resume_ckpt: Path to checkpoint file to resume training from.
     """
     # Setup
     set_seed(train_cfg.seed)
@@ -350,6 +351,11 @@ def train(
 
     best_auc = 0.0
     timestamp = datetime.now().strftime("%y%m%d%H%M")
+
+    # Load model weights from checkpoint if provided
+    if resume_ckpt is not None:
+        print(f"\nLoading weights from checkpoint: {resume_ckpt}")
+        load_checkpoint(resume_ckpt, model=model, device=device)
 
     # ========================================
     # Phase 1: Train head only
@@ -547,6 +553,10 @@ def parse_args():
     parser.add_argument("--max-videos-per-class", type=int, default=None,
                         help="Max videos per class for balanced training (default: None = no limit)")
 
+    # Resume training
+    parser.add_argument("--resume-ckpt", type=str, default=None,
+                        help="Path to checkpoint file to resume training from")
+
     return parser.parse_args()
 
 
@@ -593,10 +603,12 @@ def main():
           f"backbone_lr={train_cfg.phase2_backbone_lr}, head_lr={train_cfg.phase2_head_lr}")
     if data_cfg.max_videos_per_class is not None:
         print(f"Video balancing: max {data_cfg.max_videos_per_class} videos per class")
+    if args.resume_ckpt:
+        print(f"Resume checkpoint: {args.resume_ckpt}")
     print("=" * 60)
 
     # Train
-    train(model_cfg, data_cfg, train_cfg)
+    train(model_cfg, data_cfg, train_cfg, resume_ckpt=args.resume_ckpt)
 
 
 if __name__ == "__main__":
